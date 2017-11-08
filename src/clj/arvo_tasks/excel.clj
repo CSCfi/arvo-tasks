@@ -33,7 +33,6 @@
 
 
 (defn open-workbook [filename password]
-  (println "Open workbook " filename password)
   (with-open [stream (FileInputStream. filename)]
     (open-workbook-from-stream stream password)))
 

@@ -1,0 +1,1 @@
+DROP TABLE uraseuranta.fonecta_data;

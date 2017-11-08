@@ -9,7 +9,7 @@
             [clojure.string :as s]
             [arvo-tasks.service.uraseuranta :as uraseuranta]))
 
-(defn handle-upload [{:keys [filename size tempfile] :as params} uraseuranta-id]
+(defn handle-upload [{:keys [filename size tempfile file data] :as params} uraseuranta-id]
   (println (str "Params: " params))
   (println (str "Uraseuranta-id: " uraseuranta-id))
   (println (str "handle-upload: Filename: " (or filename "null") " size: "
