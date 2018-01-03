@@ -7,7 +7,8 @@
             [ring.util.http-response :as response]
             [arvo-tasks.service.vastaajatunnus :as vastaajatunnus]
             [arvo-tasks.util :refer :all]
-            [clj-time.format :as f])
+            [clj-time.format :as f]
+            [arvo-tasks.integration.arvo :as arvo])
   (:import (java.security MessageDigest)
            (javassist.bytecode ByteArray)))
 
@@ -95,6 +96,72 @@
   (let [data (->> (db/get-tupa-list uraseuranta-id tasot)
                  (map format-dates))]
     (excel/save-excel data tupa-fields nimi password)))
+
+(defn list-active-questionnaires []
+  (arvo/get-uraseuranta-questionnaires))
+
+(defn uraseuranta-tyyppi [vastaaja]
+  (if (= "7" (:tutkinnon_taso vastaaja))
+      "tohtorit"
+      "maisterit"))
+
+(defn get-kyselykerta [kyselyt vastaaja]
+  (->> kyselyt
+      (filter #(and (= (:oppilaitoskoodi %) (:oppilaitoskoodi vastaaja))
+                    (= (:uraseuranta_tyyppi %) (uraseuranta-tyyppi vastaaja))))
+      first
+      :kyselykertaid))
+
+(defn get-kieli [vastaaja]
+  (if (some #(= (:aidinkieli vastaaja) %) ["fi" "sv" "en"])
+    (:aidinkieli vastaaja)
+    "en"))
+
+(defn format-vastaaja [kyselykerrat vastaaja]
+  (let [kyselykertaid (get-kyselykerta kyselykerrat vastaaja)
+        kieli (get-kieli vastaaja)]
+    (-> vastaaja
+      (assoc :kyselykertaid kyselykertaid :kieli kieli :uraseuranta_tyyppi (uraseuranta-tyyppi vastaaja)))))
+
+(defn get-missing-questionnaires [vastaajat]
+  (let [grouped (group-by :oppilaitoskoodi vastaajat)
+        missing-count (map (fn [[k v]] {:oppilaitoskoodi k :oppilaitos_nimi (:oppilaitos_nimi (first v)) :vastaajia (count v)}) grouped)]
+    missing-count))
+
+(defn find-kyselykerta [kyselykerrat kyselykertaid vastaajia]
+  (let [kyselykerta (first (filter #(= (:kyselykertaid %) kyselykertaid) kyselykerrat))]
+    (assoc kyselykerta :vastaajia vastaajia)))
+
+(defn generate-uraseuranta-stats [kyselykerrat vastaajatunnukset]
+  (let [grouped (group-by :kyselykertaid vastaajatunnukset)
+        available (map (fn [[k v]]
+                         (find-kyselykerta kyselykerrat k (count v)))
+                       (dissoc grouped nil))]
+    {:liitettavissa available
+     :puuttuvat (get-missing-questionnaires (get grouped nil))}))
+
+(defn get-uraseuranta-stats [uraseuranta-id]
+  (let [kyselykerrat (arvo/get-uraseuranta-questionnaires)
+        vastaajat (db/get-vastaajat uraseuranta-id)
+        vastaajatunnukset (map #(format-vastaaja kyselykerrat %) vastaajat)]
+    (generate-uraseuranta-stats kyselykerrat vastaajatunnukset)))
+
+(defn attach-tunnnus-to-kyselykerta [uraseuranta-id]
+  (let [kyselykerrat (arvo/get-uraseuranta-questionnaires)
+        vastaajat (db/get-vastaajat uraseuranta-id)
+        vastaajatunnukset (map #(format-vastaaja kyselykerrat %) vastaajat)
+        liitetyt (arvo/liita-vastaajatunnukset! (filter #(some? (:kyselykertaid %)) vastaajatunnukset))]
+    (db/lisaa-kyselykerrat liitetyt uraseuranta-id)
+    liitetyt))
+
+(defn hae-kyselykerran-vastaajat [kyselykerta]
+  (let [vastaajat (arvo/hae-vastaajat (:kyselykertaid kyselykerta))]
+    (map #(assoc {} :tunnus % :tyyppi (:uraseuranta_tyyppi kyselykerta)) vastaajat)))
+
+(defn hae-vastaajat [uraseuranta-id]
+  (let [kyselykerrat (db/hae-kyselykerrat uraseuranta-id)
+        vastaajat (mapcat hae-kyselykerran-vastaajat kyselykerrat)]
+    (excel/save-excel vastaajat [:tunnus :tyyppi] "vastanneet")))
 
 (defn get-tupa-lists [uraseuranta-id password]
   (let [tohtorit (get-tupa-list uraseuranta-id ["7"] "Uraseuranta-tohtorit" password)

@@ -61,9 +61,21 @@ FROM uraseuranta.virta_data v
  LEFT JOIN uraseuranta.fonecta_data fonecta ON v.id = fonecta.virta_data_id
 WHERE v.uraseuranta_id = :uraseuranta_id AND v.tutkinnon_taso IN (:v*:tasot);
 
+-- :name get-vastaajat :? :*
+SELECT t.tunnus, v.oppilaitoskoodi, v.oppilaitos_nimi, v.tutkinnon_taso, v.aidinkieli FROM uraseuranta.vastaajatunnus t
+ JOIN uraseuranta.virta_data v ON t.virta_data_id = v.id
+WHERE v.uraseuranta_id = :uraseuranta;
+
 -- :name save-file-status! :! :n
 INSERT INTO uraseuranta.file (uraseuranta_id, filename, checksum, date)
  VALUES (:uraseuranta_id, :filename, :checksum, now());
 
 -- :name delete-virta-data-by-hetu :! :n
-DELETE FROM uraseuranta.virta_data WHERE henkilotunnus IN (:v*:hetus)
+DELETE FROM uraseuranta.virta_data WHERE henkilotunnus IN (:v*:hetus);
+
+-- :name add-kyselykerta-mapping :! :n
+INSERT INTO uraseuranta.kyselykerta (uraseuranta_id, kyselykertaid, oppilaitoskoodi, uraseuranta_tyyppi, vastaajia)
+    VALUES (:uraseuranta_id, :kyselykertaid, :oppilaitoskoodi, :uraseuranta_tyyppi, :vastaajia)
+
+-- :name get-kyselykerrat :? :*
+SELECT * FROM uraseuranta.kyselykerta WHERE uraseuranta_id = :uraseuranta_id;

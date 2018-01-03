@@ -21,6 +21,4 @@
 
 (defroutes uraseuranta-routes
   (POST "/api/:id/upload" [id upload-file]
-    (handle-upload upload-file (Integer/parseInt id)))
-  (GET "/api/luotunnukset" []
-    (arvo/luo-vastaajatunnukset!)))
+    (handle-upload upload-file (Integer/parseInt id))))

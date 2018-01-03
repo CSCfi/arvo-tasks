@@ -1,15 +1,18 @@
 (ns arvo-tasks.service.vastaajatunnus
-  (:require [arvo-tasks.db.core :as db]))
+  (:require [arvo-tasks.db.core :as db]
+            [arvo-tasks.config :refer [env]]))
 
 (def allowed-chars "ACEFHJKLMNPRTWXY347")
 (def tunnus-length 5)
 
 (def start-val (int (reduce #(+ (Math/pow (count allowed-chars) %2) %1) (range tunnus-length))))
 
-(defn lazyshuffledrange1 [a m seed]
+(defn get-nth [a m seed]
   (fn [x] (mod (+ a x seed) m)))
 
-(def lazyrange (drop 1 (iterate (lazyshuffledrange1 131943 2476081 12412123) 0)))
+(def closest-prime 2476081)
+
+(def lazyrange (drop 1 (iterate (get-nth 131943 closest-prime (:vastaajatunnus-seed env)) 0)))
 
 (defn -generate-tunnus [val]
   (let [quot (quot val (count allowed-chars))

@@ -86,5 +86,16 @@
 (defn get-data-for-fonecta [uraseuranta-id]
   (db/get-data-for-fonecta {:id uraseuranta-id}))
 
+(defn get-vastaajat [uraseuranta-id]
+  (db/get-vastaajat {:uraseuranta uraseuranta-id}))
+
 (defn save-file-status [uraseuranta-id filename checksum]
   (db/save-file-status! {:uraseuranta_id uraseuranta-id :filename filename :checksum checksum}))
+
+(defn lisaa-kyselykerrat [kyselykerrat uraseuranta-id]
+  (jdbc/with-db-transaction [tx *db*]
+    (doseq [kyselykerta kyselykerrat]
+      (db/add-kyselykerta-mapping (assoc kyselykerta :uraseuranta_id uraseuranta-id)))))
+
+(defn hae-kyselykerrat [uraseuranta-id]
+  (db/get-kyselykerrat {:uraseuranta_id uraseuranta-id}))

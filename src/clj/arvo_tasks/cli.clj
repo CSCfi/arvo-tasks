@@ -41,14 +41,40 @@
   (db/add-uraseuranta! {:name nimi})
   (println "Uraseuranta" nimi "luotu"))
 
+(defn pad [s len]
+  (apply str s (take (- len (count s)) (repeat " "))))
+
+(defn print-uraseuranta-stats [stats]
+  (println "Liitettävissä:")
+  (doseq [row (sort-by :oppilaitos_nimi (:liitettavissa stats))]
+    (println (format "%5d | %s | %s" (:vastaajia row) (pad (:oppilaitos_nimi row) 40) (:kyselykerta_nimi row))))
+  (println "Ei kyselykertaa:")
+  (doseq [row (sort-by :oppilaitos_nimi (:puuttuvat stats))]
+    (println (format "%5d | %s" (:vastaajia row) (:oppilaitos_nimi row)))))
+
+(defn listaa-kyselyt [uraseuranta-id]
+  (let [stats (uraseuranta/get-uraseuranta-stats uraseuranta-id)]
+    (print-uraseuranta-stats stats)))
+
+(defn liita-tunnukset [uraseuranta-id]
+  (let [liitetyt (uraseuranta/attach-tunnnus-to-kyselykerta uraseuranta-id)]
+    (println "Liitetty" (reduce + (map :vastaajia liitetyt)) "tunnusta")))
+
+(defn hae-vastaajat [uraseuranta-id]
+  (println "Vastaajat: ")
+  (println (uraseuranta/hae-vastaajat uraseuranta-id)))
+
 (defn start []
   (cli/start-cli {:cmds
-                  {:luo-uraseuranta {:fn luo-uraseuranta}
-                   :lisaa-poiminta {:fn lisaa-poiminta}
-                   :lisaa-vrk {:fn lisaa-vrk}
-                   :lisaa-fonecta {:fn lisaa-fonecta}
-                   :luo-tunnukset {:fn luo-tunnukset}
-                   :lataa-fonecta {:fn lataa-fonecta-lista}
-                   :listaa-uraseurannat {:fn listaa-uraseurannat}
-                   :luo-tupa-listat {:fn luo-tupa-listat}}}))
+                    {:luo-uraseuranta {:fn luo-uraseuranta}
+                     :lisaa-poiminta {:fn lisaa-poiminta}
+                     :lisaa-vrk {:fn lisaa-vrk}
+                     :lisaa-fonecta {:fn lisaa-fonecta}
+                     :luo-tunnukset {:fn luo-tunnukset}
+                     :lataa-fonecta {:fn lataa-fonecta-lista}
+                     :listaa-uraseurannat {:fn listaa-uraseurannat}
+                     :luo-tupa-listat {:fn luo-tupa-listat}
+                     :listaa-kyselyt {:fn listaa-kyselyt}
+                     :liita-tunnukset {:fn liita-tunnukset}
+                     :hae-vastaajat {:fn hae-vastaajat}}}))
 
